@@ -1,0 +1,143 @@
+*************************
+	DOCKER
+*************************
+
+Formas de instalar o Docker:
+
+#1 - script de conveniencia
+#2 - repositorio e instalacao manual (Maneira correta, que vale para a prova de certificação - Utilizado em ambientes de Produção)
+#3 - instalar pelos pacotes .deb ou .rpm
+
+
+
+//--
+O container tem 2 funcionalidades:
+# exucutar o código que está contido nesse container (servir ao seu propósito)
+# morrer (morrer pois já serviu ao seu propósito - ele tem que morrer pois ele serve para fazer uma única funcionalidade)
+
+
+Documentação do Docker: 
+https://docs.docker.com/engine/install/ubuntu/
+*************************
+
+
+Instalando SEM script de conveniencia > Instalando da forma como é instalado em produção:
+
+Instalando o Docker na maquina 1 (Linux - Ubunto):
+https://docs.docker.com/engine/install/ubuntu/
+
+
+cd docker-dca
+
+vagrant up node01 node 02 (Subindo as duas maquinas, uma com Ubunto e a outra com CentOS)
+
+vagrant status (mostra as maquinas que estão rodando)
+
+vagrant ssh node01 (acessando a aquina node01)
+
+sudo apt-get update (Atualizando a lista de pacotes)
+
+sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release -y (Instalando uma série de programas)
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg (Baixando a chave gnupg, que é uma chave pra assinar o repositório - Vai trazer o repositório como aceito)
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null                       (Vai mandar para dentro do etc/apt/sources.liest o repositório com a chave assinada, com as informações para instalar o docker)
+
+ls -ls /etc/apt/sources.list.d/       (Vendo os arquivos que tem dentro de etc/apt/sources)
+
+cat /etc/apt/sources.list.d/docker.list      (Lendo os arquivos - Podemos verificar o S.O instalado)
+
+sudo apt-get update (Atualizando a lista de pacotes)
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io     (Instalando: docker-ce[versão free do docker], docker-cli [linha de comandos do docker - basicamente os comandos que vamos executar], containerd.io [é a engine, o runtime de containers, o docker vai interagir com o containerd para subir os containers])
+
+docker system info (versão do docker, informações) // Se não funcionar, é por conta das permissões de usuários, pode tentar usar o comando: sudo docker system info
+
+//corrigindo o erro do usuário  > sudo usermod -aG docker $USER
+//				> echo $SUPER
+//				> getent group docker (vendo o grupo docker e o ID)
+//				> exit
+//				> exit
+//				> vagrant ssh node 01
+
+docker system info
+
+
+> sudo curl \
+    -L https://raw.githubusercontent.com/docker/compose/1.29.2/contrib/completion/bash/docker-compose \
+    -o /etc/bash_completion.d/docker-compose  (baixa um script de auto-completar no docker)
+
+> exit (para aplicar o auto-complete)
+
+>vagrant ssh node01 (entrando novamente)
+
+>docker TAB(digitar docker, espaço e apertar TAB) (aparece os completes)
+
+> exit
+
+
+
+*****************************************
+Instalando o Docker na maquina 2 (CentOS):
+https://docs.docker.com/engine/install/centos/
+
+
+> vagrant ssh node02
+
+> cat /etc/*release (vendo as infos da máquina 2, S.O...)
+
+> sudo yum install yum-utils epel-release -y (instalando o yum-utils e o epel-release[traz uma série de pacotes que ajudam], mas só precisamos do yum-utils)
+
+> sudo yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo    (Adicionando o repositório do Docker dentro da base do yum)
+
+>  sudo yum install docker-ce docker-ce-cli containerd.io
+
+>  sudo systemctl enable docker (Habilitando o serviço, por padão os servidores headhat não iniciam o serviço sozinho)
+
+> sudo systemctl start docker (Iniciando o serviço)
+
+> sudo usermode -aG docker $USER (Para podermos adicionar nosso usuário no grupo do USER)
+
+
+*******
+Rodando nosso primeiro container:
+
+> exit
+
+> vagrant ssh node01
+
+> docker container run --rm -it hello-world (Rodando nosso container)
+// EXPLICAÇÃO DO COMANDO:
+// docker : comando docker - docker-ce-cli
+// docker container : estamos falando para o docker cli interagir com o módulo de containers do docker deamon
+// docker container run : execute um container
+// --rm : remove (remove o container depois do container servir o propósito)
+// -it : Interactive / TTY (Roda no formato iterativo[interação com o container] e terminal[terminal para poder ver o que está acontecendo])
+// hello-world : imagem de container que estamos usando
+
+> docker container ls (Lista os containers)
+
+> docker container ls -a (lista todos os containers, até os que estão mortos)
+
+> docker container ls -aq (lista somente o ID de todos os containers)
+
+> docker container rm {nome container}    (removendo um container)
+
+
+
+# SUBSHEL
+docker container rm $(docker container ls -aq)    //Vai executar primeiro o parenteses, pegar o resultado e rodar o prieiro comando (docker container rm)
+
+
+> exit
+
+> vagrant halt  (IMPORTANTE AO FINAL EXEC ESSE COMANDO PARA DELISGAR AS MAQUINAS)
+
+
+****
+bônus:
+for i in $(seq 1 10) ; do echo "O valor de i é $i." ; done

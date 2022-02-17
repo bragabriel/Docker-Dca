@@ -1,0 +1,307 @@
+********************************************************************************
+		DOCKER - AULA 02 - COMANDOS DOCKER E IMAGENS
+********************************************************************************
+
+Linux:
+man -> comando mais importante do Linux (abre o manual)
+
+man (comando)
+
+-
+
+LS (list)  ->  Docker container ls - Docker container list
+PS (Process Status) -> Docker contaier ps
+
+--
+
+
+Como o docker trabalha?
+Pega vários recursos do Linux para poder fazer sua separação de containers
+
+Namespaces: recurso utilizado pelo Docker, para poder separar processos dentro do Docker 
+
+* Process ID
+* Mount Points
+* Inter points comunications
+* Networking
+
+Namespace fornece o isolamento para os containers, limita o acesso aos recursos do sistema e outros namespaces. Isso significa que o usuário root dentro de um container é diferente do user root de outro container que é diferente do user root da sua máquina pessoal.
+
+
+Cgroups: isola os recursos físicos de uma máquina (podemos limitar memória, reserva de cpu...)
+
+*cpu (limitar cpu)
+*cpuset (limitar qtd de threads)
+*memory (limitar memória)
+*device (acesso a dispositivos, ex: bluetooth, para poder conectar com algum dispositivo de Iot)
+
+
+Comandos importantes Docker:
+> docker container ls
+> docker image ls
+> docker network ls
+> docker volume ls
+
+
+----
+Diferença entre container e imagem:
+
+A diferença entre container e imagem é básicamente que o container é a imagem mais a camada de leitura e escrita, e a imagem são só as camadas de leitura
+
+----
+
+
+Class Commands:
+
+> vagrant up node01 (subindo a máquina node01)
+
+> vagrant ssh node01 (entrando na máquina 01 - que tem o ubunto e o docker instalado)
+
+> docker system info (para ver se o docker está rodando, traz a config do cliente e do servidor)
+
+> docker --help (para ver os comandos que podemos dar)
+
+> docker search debian (procura no dockerhub todas as imagens com nome debian)
+
+> docker image pull debian (baixa a imagem de nome 'debian')
+
+> docker image ls (listando para ver se baixou a image)
+
+//exec. contai. docker
+> docker container run -dit --name debian1 --hostname c1 debian(executandoo container para ver se a image está funcionando)
+// -dit : detached interactive tty (d[pula fora do container] i[iterativo, poder passar comandos para ele] t[terminal, poder interagir com ele] 
+// --name {nome}: nome que vamos chamar o container
+// --hostname {c1}: trocando o nome do container para c1
+// docker container run -dit --name... debian (passando a image)
+
+> docker container attach debian1 (entrando no container - não estamos mais na nossa máquina)
+
+> exit (saindo do container)
+
+> docker container ls (podemos veriricar que o container morreu/sumiu.)
+
+> docker container start debian1 (iniciando o container novamente)
+
+> docker container attach debian1 (entrando no container)
+
+// Read Escape Sequence
+// CTRL + P + Q
+
+> CTRL + P + Q (saimos do container sem matar ele)
+
+> docker container logs debian1 (Mostra os logs do container docker 'debian1')
+
+> docker container stop debian1 (Parando o container 'debian1')
+
+> docker container rm debian1 (Removendo o container 'debian1')
+
+> docker container ls -a (listando)
+
+//Caso esteja em um container e queira remove-lo, vai dar erro, pois precisamos primeiro pará-lo
+//Para isso, podemos utilizar o -f(force) ou (foda-se, rsrs), ignorando os erros e apenas executando o comando, ex:
+
+//  > docker container rm -f debian1
+
+> docker container run -dit --name c1 --hostname server debian (iniciando outro container chamado 'server' com a img 'debian')
+
+> docker container ls (para verificar se está rodando)
+
+> echo "Arquivo teste" > /tmp/arquivo   (Criando um arquivo .txt com o texto: "Arquivo teste")
+
+> cat /tmp/arquivo    (Verificando o conteúdo do arquivo 'arquivo')
+
+
+> docker container cp /tmp/arquivo c1:/tmp					(Mandando o arquivo 'arquivo' para o container)
+//		copy  'local do arquivo' 'nomeContainer' ':' 'local de destino'
+
+
+> docker container exec c1 ls -l /tmp  (executando um comando no container mesmo não estando dentro do container)
+//		exec 'nomeContainer' 'comando (neste caso o comando é: ls -l /tmp [/tmp é o local a ser executado o ls -l])'
+
+> docker container exec c1 cat /tmp/arquivo (executando um comando no container mesmo não estando dentro do container)
+
+> docker container rm -f c1 (removendo o container de nome c1)
+
+
+> docker search alpine | head -n 3  (procura a imagem em: hub.docker.com  -  é como se fosse um github de imagens)
+
+
+// Para logar no docker hub
+// > docker login -u usuario
+// > (colocar a password)
+// docker logout (para dar logout)
+
+> docker image ls (listando as imagens)
+
+> docker image history nomeimagem (vai mostrar o historico de criação de image)
+
+> docker image inspect debian (vai trazer os dados da image - inspeciona a image (id, tags, size...)
+
+
+//Fazendo cagada/gambiarra em um servidor (container) - Não faça isso em produção.
+//Instalando um servidor, atualizando ele e gerando uma imagem a partir do container que está rodando.
+//O problema disso é que tem várias coisas que não deveriam estar ali (logs, trash files...)
+
+> debian container run -dit --name servidor-debian debian (subindo um servidor)
+
+> docker container exec servidor-debian apt-get update  (atualizando lista de pacotes)
+
+> docker container exec servidor-debian apt-get install nginx -y (Instalando nginx no container)
+
+//Dessa forma, estamos gerando muitos lixos no servidor
+
+
+//Gambiarra da Gambiarra:
+> docker container commit servidor-debian webserver-nginx (gerando a imagem)
+
+> docker image ls (listando as images)
+
+> docker image save webserver-nginx -o batatinha.tar (salvando a image no arquivo batatainha.tar [.tar = empacotando os arquivos])
+
+> docker container rm -f servidor-debian (removendo o container)
+
+> docker image rm webserver-nginx (removendo a image)
+
+> docker image ls (listando as imagens para verificar que não temos mais a imagem webserver-nginx)
+
+> ls -l (listando e vendo que temos o arquivo batatinha.tar que contém a imagem)
+
+> docker image load -i batatinha.tar (-i [input] - Estamos carregando a image salva e executando ela, backup gambiarra, não fazer isso)
+
+> docker image ls (Podemos perceber que ele carregou apenas que não tinha, aproveitando as outras)
+//o arquivo tem 200mb mas só puxou o que não tinha 211-124=87mb
+
+
+
+-----------------------
+# DOCKERFILE
+// DockerFile é um arquivo de instrução que utilizamos para gerar as imagens do Docker (da maneira correta)
+
+
+// Ao utilizar o DockerFile seu nome tem que ser obrigatóriamente = Dockerfile
+
+
+// Comandos padrões:
+// FROM -> Diz qual é a origem da imagem (qual imagem base)
+// COPY -> Copia arquivos ou diretórios de origem local para a imagem do Container
+// RUN -> Executa um comando dentro do Container
+// ADD -> Quase igual o COPY, mas aceita URL e alterar os permissionamentos
+// EXPOSE -> Expoe uma porta para o docker deamon (REDE) [ele fala para o docker qual porta de rede o container vai utilizar]
+// ENTRYPOINT -> Ponto de Entrada do container [O que mantem o container vivo]
+// CMD -> Argumentos para o Entrypoint
+
+// Outros comandos na documentação: https://docs.docker.com/engine/reference/builder/
+
+
+----------------------
+
+//Utilizando o DOCKERFILE
+
+> vagrant ssh node01
+
+> mkdir -p ~/dockerfiles/echo-container (Criando a pasta do primeiro container que vamos utilizar [mkdir -p = cria todos os diretorios mesmo que não exista, pastas e subpastas)
+
+> cd ~/dockerfiles/echo-container (Entrando na pasta que criamos
+
+> vim Dockerfile (criando um arquivo chamado Dockerfile)
+
+/> Apertamos I ou Enter para começar a escrever no VIM
+> FROM alpine
+> ENTRYPOINT ["echo"]
+> CMD --help
+
+(Explicação: 
+	Pegando imagem de linux 'Alpine';
+	O que vai manter o container vivo é comando 'echo';
+	O argumento que será passado para o 'echo' é o --help;
+
+Ou seja, criaremos uma imagem que tera o comando echo --help
+)
+
+/>Depois de digitar isso no VIM, teclamos ESC (percebemos que o 'insert' no canto inferior esquerdo some)
+/>Depois disso, teclamos: :wq
+
+> ESC (para sair da edição)
+
+> :wq (para sair do VIM)
+
+> docker image build -t echo-container .
+//	Construa uma imagem docker [-t : tag(nome)] [ . : builder context, onde vai ser contruído a imagem]
+
+> docker container run --rm -it echo-container
+// Execute o container e remova ele depois de executado (--rm)
+
+> docker container run --rm -it echo-container "Hello-World!" 
+//Echo --help agora é Echo Hello-World [Pois o EntryPoint é o CMD]
+
+//Entry point = ponto de entrada
+//CMD = argumentos para o ponto de entrada
+
+
+> cd
+
+
+//Agora criaremos um webserver da forma CORRETA (Sem gambiarra!)
+
+> mkdir ~/dockerfiles/webserver (criando a pasta)
+
+> cd ~/dockerfiles/webserver (entrando na pasta)
+
+> vim Dockerfile (criando o arquivo Dockerfile)
+
+> teclamos 'i' para editar o arquivo
+
+/Dentro do arquivo:
+> FROM debian   		//de Debian
+> RUN apt-get update		//Rodando update
+> RUN apt-get install wget git apache2 -yq		//Install update -yq (yes, quite[sem exibir mt coisa na tela])
+> EXPOSE 80					//Utilizando a porta 80
+> CMD ["apachectl", "-D", "FOREGROUND"]		//Comandos CMD (Rodando o apache -deamon -foreground : Rodando o apache em primeiro plano)
+
+
+////
+////OUTRA FORMA DE FAZER SERIA CRIANDO APENAS UMA CAMADA PARA O RUN:
+Dentro do arquivo:
+> FROM debian   	
+> RUN apt-get update; apt-get install wget git apache2 -yq
+> EXPOSE 80					
+> CMD ["apachectl", "-D", "FOREGROUND"]		
+////
+
+
+> docker image build -t webserver .
+//	Construa uma imagem docker [-t : tag(nome{webserver})] [ . : builder context, onde vai ser contruído a imagem]
+
+> docker image ls (listando as images) 
+
+
+//Agora iremos mandar a image para o DockerHub
+> docker login -u gabrielbragasilva(Logando no Docker Hub)
+
+> (inserir a password)
+
+> docker image ls
+
+> docker image tag echo-container gabrielbragasilva/echo-container:dca (Taguiando a image, pois não temos acesso para fazer upload de image oficial do Docker, para isso criamos uma nova tag para a image)
+//						      Chamando de 'dca'
+
+> docker image push gabrielbragasilva/echo-container:dca  (Mandando a image para o DockerHub)
+//agora nossa image está disponível no dockerhub! Qualquer um pode baixar e utilizar
+//link do meu dockhub: https://hub.docker.com/repository/docker/gabrielbragasilva/echo-container
+
+
+//Baixando a image do CaioDelgado
+> docker image pull caiodelgadonew/echo-container:dca
+
+//Rodando a image do Caio:
+> docker container run --rm caiodelgadonew/echo-container:dca "Funcionou"?
+
+//Logout (importante)
+> docker logout
+
+> exit
+
+> vagrant halt (desligando a máquina)
+
+> vagrant status (conferindo)
+
