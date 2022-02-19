@@ -1,0 +1,145 @@
+********************************************************************************
+		DOCKER - AULA 03 - Melhores Práticas e Multistage Build
+********************************************************************************
+
+# DICA 1: A ordem importa quando tratados do Cache (DockerFile)
+
+
+
+//Relembrando alguns comandos:
+
+// Construindo uma image:
+/> docker image build -t nome:tag .
+
+// Pega um container rodando e salva ele em um arquivo .tar (salva vidas mas não é certo usar)
+/> docker save
+
+// Carrega o container salvo em .tar (salva vidas mas não é bom usar)
+/> docker load
+
+// Rodando o container
+/> docker container run --rm -it echo-container TESTEEEE OLAAAA
+
+
+> ls -l
+
+> docker image ls
+
+> cd ~/dockerfiles/echo-container
+
+> ls -l
+
+> cat Dockerfile
+
+//Criando uma image teste
+> docker image build -t teste:lateste .   ( . : diretório atual)
+//Enviando a image para o contexto de build
+
+//Não tevemos utilizar um deiretório externo para o contexto de build
+
+> cd
+
+> mkdir -p dockerfiles/exemplo01
+
+> cd dockerfiles/exemplo01
+
+> echo "Docker file Melhores Práticas" > conteudo.txt  (criando um conteudo.txt com o conteúdo "Docker file Melhores Práticas")
+
+> cat conteudo.txt (exibindo o conteudo do arquivo conteudo.txt)
+
+> vim Dockerfile (criando o Dockerfile)
+
+//Dentro do vim Dockerfile
+>FROM busybox				// busybox é uma image menor que o alpine (Só com os comandos básicos do Linux)
+>COPY conteudo.txt/   			//copiando conteudo.txt para o diretorio /
+>RUN cat /conteudo.txt			// Rodando cat no conteudo.txt
+
+
+> 'ESC' (salvando no vim)
+
+> :wq (saindo do vim)
+
+> docker image ls
+
+> docker image build -t exemplo:v1 .  //criando uma image chamada exemplo com tag v1
+
+> docker image ls (conferindo que temos nossa image v1)
+
+> mkdir context
+
+> mkdir image
+
+> ls -l
+
+> mv Dockerfile image/    //movendo dockerfile para image/
+ 
+> mv conteudo.txt context/     //movendo conteudo.txt para context/
+
+/////> sudo apt-get install tree -y (instalando o tree para ficar mais fácil de visualizar)
+
+> tree
+
+> docker image build -t exemplo:v2  // Ao utilizarmos este comando, teremos erro, pois não temos o Dockerfile no mesmo diretório
+
+//Para resolver isso:
+
+> docker image build --no-cache -t exemplo:v2 -f image/Dockerfile context/    (utilizando a estrutura da image que ficou no cache & utilizando o Dockerfile de dentro da pasta image/ & pegando o contexto que está dentro da pasta context/)
+
+> docker image ls | head -n1 ; docker image ls | grep exemplo
+
+// docker image ls | head -n1		(executa o comando e pega a primeira imagem da cabeça [de cima])
+// docker image ls | grep exemplo 	(lista o que é 'exemplo')
+// ;  (serve para executar um comando e depois o outro)
+
+
+> sudo cp -r /var/log ~/dockerfiles/exemplo1/context (copiando varios arquivos de /log para /context)
+// Comando não funcionou para mim, talvez por não estar utilizando Linux e windows? Não sei
+
+> docker image ls | egrep "REPOSITORY|exemplo"
+
+
+# .dockerignore
+//Podemos utilizar o .dockerignore como o .gitignore na hora de enviar algo para o contexto de build
+
+> vim context/.dockerignore
+
+> tecla 'I'
+
+>#Comentario: Ignorando arquivos do diretório de log
+>log
+
+> tecla 'ESC'
+
+> :wq
+
+> docker image ls | egrep "REPOSITORY|exemplo"
+
+//
+
+
+> cd
+
+> mkdir -p dockerfiles/dicas
+
+> cd dockerfiles/dicas/
+
+> git clone https://github.com/caiodelgadon ew/java-wc-app.git app  (clonando repositorio)
+
+> tree
+
+> vim Dockefile
+
+> tecla "i"
+
+>FROM 		debian:9
+>RUN 		apt-get update
+>RUN 		apt-get install -y openjdk-8-jdk ssh vim
+>COPY 		app /app
+>ENTRYPOINT 	["java", "-jar"., "/app/target/app.jar"]
+
+> tecla "esc"
+
+> :wq
+
+> docker image build -t dicas:v1 .
+
