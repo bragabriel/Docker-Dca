@@ -2,8 +2,36 @@
 		DOCKER - AULA 03 - Melhores Práticas e Multistage Build
 ********************************************************************************
 
-# DICA 1: A ordem importa quando tratados do Cache (DockerFile)
+# DICA 1: A ordem importa quando tratados do Cache (DockerFile);
+A ordem dos passos de build ordena os passos do que irá sofrer menos mudanças para o que irá sofrer mais alterações.
 
+# DICA 2: COPY mais específico para limitar a quebra de cachetree;
+
+# DICA 3: Identifique as instruções que podem ser AGRUPADAS [&&];
+(cada instrução cria uma nova camada, então podemos resumir em menos camadas e melhorar a performance)
+
+# DICA 4: Remova as pendencias desnecessárias;
+
+# DICA 5: Remover o cache do gerenciador de pacotes;
+
+# DICA 6: Utilizar images oficiais quando possível;
+
+# DICA 7: Utilizar tags mais específicas;
+
+# DICA 8: Procure por flavors mínimos;
+
+# DICA 9: Multi-Stage Build; (começou no docker 17.05) 
+(Utilizado para poder otimizar o Dockerfiles e deixar fácil de gerenciar)
+
+
+
+exemplo:
+FROM		debian:9
+RUN		apt-get update \
+		&& apt-get install -y \
+		openjdk-8-jdk \
+COPY 		app/target/app.jar /app/app.jar
+ENTRYPOINT	["java", "-jar", "/app/app.jar"]
 
 
 //Relembrando alguns comandos:
@@ -135,7 +163,7 @@
 >RUN 		apt-get update
 >RUN 		apt-get install -y openjdk-8-jdk ssh vim
 >COPY 		app /app
->ENTRYPOINT 	["java", "-jar"., "/app/target/app.jar"]
+>ENTRYPOINT 	["java", "-jar", "/app/target/app.jar"]
 
 > tecla "esc"
 
@@ -143,3 +171,257 @@
 
 > docker image build -t dicas:v1 .
 
+
+//Fazendo um COPY mais específicico (DICA 2)
+> vim Dockerfile
+
+> tecla 'i'
+
+>FROM 		debian:9
+>RUN 		apt-get update
+>RUN 		apt-get install -y openjdk-8-jdk ssh vim
+>COPY 		app/target/app.jar /app/app.jar
+>COPY		app/samples /samples
+>ENTRYPOINT 	["java", "-jar", "/app/app.jar"]
+
+> tecla 'esc'
+
+> :wq
+
+
+//construindo image utilizando as dicas para ganho de performance:
+> docker image build -t dicas:v2 .
+
+//conferindo o tamanho:
+docker image ls | egrep "REPOSITORY|dicas"
+
+
+//Rodando a aplicação (dicas:v1) para testar:
+> docker container run --rm -it dicas:v1  /app/samples/1.txt
+
+
+//Rodando a aplicação (dicas:v2) para testar:
+> docker container run --rm -it dicas:v2 /samples/1.txt
+
+
+// DICA 03
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM            debian:9
+RUN             apt-get update \
+                && apt-get install -y \
+                openjdk-8-jdk wget \
+                ssh vim
+COPY            app/target/app.jar /app/app.jar
+COPY            app/samples /samples
+ENTRYPOINT      ["java", "-jar", "/app/app.jar"]
+
+> tecla 'esc'
+
+> :wq
+
+//Rodando a image v3
+> docker image build -t dicas:v3 .
+
+> docker image ls | egrep "REPOSITORY|dicas"
+
+
+// DICA 04
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM            debian:9
+RUN             apt-get update \
+                && apt-get install -y --no-install-recommends\
+                openjdk-8-jdk wget \
+COPY            app/target/app.jar /app/app.jar
+COPY            app/samples /samples
+ENTRYPOINT      ["java", "-jar", "/app/app.jar"]
+
+
+> tecla 'esc'
+
+> :wq
+
+> docker image build -t dicas:v4 .
+
+//Arquivos cache que são mandados para dentro do container. Por isso a dica 5 é tão importante! (Remover o cache
+> tree /var/lib/apt/lists/
+> tree /var/cache/apt
+
+> docker image ls | egrep "REPOSITORY|dicas"
+
+
+// DICA 05
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM            debian:9
+RUN             apt-get update \
+                && apt-get install -y --no-install-recommends\
+                openjdk-8-jdk wget \
+		&& rm -rf /var/lib/apt/lists \
+		&& rm -rf /var/cache/apt
+COPY            app/target/app.jar /app/app.jar
+COPY            app/samples /samples
+ENTRYPOINT      ["java", "-jar", "/app/app.jar"]
+
+> tecla 'esc'
+
+> :wq
+
+> docker image build -t dicas:v5 .
+
+> docker image ls | egrep "REPOSITORY|dicas" (conferindo o tamanho das images - percebemos que por limpar o cache, o v5 é o que tem menor tamanho)
+
+
+
+// DICA 6
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM 		openjdk
+COPY            app/target/app.jar /app/app.jar
+COPY            app/samples /samples
+ENTRYPOINT      ["java", "-jar", "/app/app.jar"]
+
+> tecla 'esc'
+
+> :wq
+
+> docker image build -t dicas:v6 .
+
+> docker image ls | egrep "REPOSITORY|dicas"
+
+
+
+// DICA 7 (multistage)
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM 		openjdk:8
+COPY            app/target/app.jar /app/app.jar
+COPY            app/samples /samples
+ENTRYPOINT      ["java", "-jar", "/app/app.jar"]
+
+> tecla 'esc'
+
+> :wq
+
+> docker image build -t dicas:v7 .
+
+> docker image ls | egrep "REPOSITORY|dicas"
+
+
+
+// DICA 8 (images que utilizam menos espaços [slim & alpine]
+slim - Baseada no Debian - Utiliza a biblioteca "GNU libc"
+alpine - Baseada na distribuição Linux chamada Alpine - Utiliza a biblioteca "musl lbc"
+
+
+//Baixando as images:
+> docker image pull openjdk:8
+
+> docker image pull openjdk:8-jre-slim
+
+> docker image pull openjdk:8-jre-alpine
+
+
+//Conferindo o tamanho das images:
+> docker image ls | egrep "REPOSITORY|openjdk"
+
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM 		openjdk:8-jre-alpine
+COPY            app/target/app.jar /app/app.jar
+COPY            app/samples /samples
+ENTRYPOINT      ["java", "-jar", "/app/app.jar"]
+
+> tecla 'esc'
+
+> :wq
+
+> docker image build -t dicas:v8 .
+
+> docker image ls | egrep "REPOSITORY|dicas"
+
+
+
+// DICA 09
+
+> git clone https://github.com/alexellis/href-counter.git ~/dockerfiles/multistage  (clorando o rep)
+
+> cd dockerfiles/multistage 
+
+> rm Docker* 
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM            golang:1.7.3
+WORKDIR         go/src/github.com/alexellis/href-counter/
+RUN             go get -d -v golang.org/x/net/html
+COPY            app.go .
+RUN             CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+CMD             ["./app"]
+
+> tecla 'esc'
+
+> :wq
+
+>  docker container run --rm -it dicas:v2 /samples/1.txt
+>  docker container run --rm -it dicas:v3 /samples/1.txt
+>  docker container run --rm -it dicas:v4 /samples/1.txt
+
+
+> docker image build -t multistage:v1
+
+> docker image ls | egrep "REPOSITORY|multistage"
+
+
+// Multistage:
+
+> vim Dockerfile
+
+> tecla 'i'
+
+FROM    golang:1.7.3 AS builder
+WORKDIR go/src/github.com/alexellis/href-counter/
+RUN     go get -d -v golang.org/x/net/html
+COPY    app/go .
+RUN     CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+
+FROM    alpine:latest
+RUN     apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY    --from=builder /go/src/github.com/alexellis/href-counter/app .
+CMD     ["./app"]
+
+> tecla 'esc'
+
+> :wq
+
+
+//buildando:
+> docker image build -t multistage:v2 .
+
+//Conferindo o tamanho:
+> docker image ls | egrep "REPOSITORY|multistage"
+
+//Testando a image:
+> docker container run --rm -it -e url=https://youtube.com/caiodelgadonew multistage:v1
