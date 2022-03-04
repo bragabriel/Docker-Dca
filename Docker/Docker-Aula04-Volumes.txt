@@ -1,0 +1,380 @@
+**********************************************************************
+		DOCKER - AULA 04 - Volumes
+**********************************************************************
+
+# VOLUME: Volume é basicamente um diretório que é designado para trabalhar em um ou mais containers.
+# 	    Um espaço para utilizar, para o docker guardar os arquivos que estiver trabahando, idependente do ciclo de vida do container.
+#	    Se o container morrer, o volume irá persistir com os dados.
+
+
+# TIPOS BÁSICOS DE VOLUMES:
+
+# VOLUME HOST: Reside dentro do sistema de arquivos do host do Docker, ou seja, da máquina que está rodando o Docker.
+		Ou seja, se o volume estiver lá, ele é do tipo HOST
+
+# VOLUME NOMEADO: É um volume que a gente cria e gerencia diretamente pelo Docker; Quando criamos ele como nomeado, damos um nome à ele.
+
+# VOLUME ANONIMO: Igual ao volume Nomeado, mas é gerado uma hash de 64 caracteres para esse volume. Não tem nome. Pois isso é Anonimo.
+
+
+
+# CoW = Copy on Write
+
+
+---
+
+# SELINUX -> READ HAT ENTERPRISE LINUX -> SECUTIRY  (Da controles de acesso para gerenciar os arquivos)
+
+# :z -> bind mount COMPARTILHA entre multiplos containers
+# :Z -> bind mount é PRIVADO. Não compartilha entre containers
+
+
+# APPARMOR -> DEBIAN -> SECURITY
+
+--------------------------
+
+
+//Descobrindo a versão do nosso kernel
+> uname -r
+
+
+//Acessando a máquina...
+> vagrant up node01
+
+
+> vagrant ssh node01
+
+//Informações do docker
+> docker system info
+
+//Verificando qual o Storage driver utilizado no momento:
+> docker system info | grep Storage
+
+
+// Aquivo para modificação de congifurações do Docker: /etc/docker/daemon.json
+// Precisamos criar o arquivo e dar restart no Docker (caso queira utilizar)
+
+//Criando o arquivo:
+> sudo vim /etc/docker/daemon.json
+
+> tecla 'i'
+
+{
+        "storage-driver": "devicemapper"
+}
+
+> tecla 'esc'
+
+> :wq
+
+//Restartando o Docker
+> sudo systemctl restart docker
+
+
+> docker system info | grep Storage
+
+
+//Voltando para o driver padrão:
+> sudo vim /etc/docker/daemon.json
+
+
+{
+        "storage-driver": "overlay2"
+}
+
+//Restartando o Docker
+> sudo systemctl restart docker
+
+//Checando se a alteração surtiu efeito:
+> docker system info | grep Storage
+
+
+----------------
+// VOLUMES
+
+> docker volume --help //ajuda de comandos
+
+/> opção '-v' ou '--volume' na hora de montar um container, significa que está montando um volume.
+
+/> opção '--mount' também funciona para trabalhar com volume, é mais complexo, tem mais informações.
+
+
+
+-----------
+// SUBINDO UM CONTAINER E TRABALHANDO COM BIND MOUNT
+
+> docker container run -dit --name servidor -v /srv:srv debian
+
+//execute um container docker
+// -dit: Detached Interactive and Terminal: cair fora do container e ter um terminal para interagir com ele
+// --name servidor: nome do container
+// debian: imagem que queremos rodar
+// -v /srv:   Montando o volume da pasta Origem (minha máquina)
+// /src: para a pasta destino (container)
+
+
+//Testando se funcionou
+> docker container ls
+
+//Executar um comando no container Docker
+> docker container exec servidor df -Th
+//df -Th: Liste as partições e os tipos (-t) em formato humano (-h) [bytes para terabytes...]
+
+
+// Listando os arquivos com caminho completo recursivo do /srv
+> docker container exec servidor ls -lR /srv
+
+
+> sudo cp -r ~/dockerfiles/ /srv
+
+> docker container exec servidor ls -l /srv/dockerfiles
+
+//Criando um arquivo dentro do container
+> docker container exec servidor touch /srv/arquivo_teste
+
+//Conferindo:
+> ls -l /srv
+
+//Removendo o servidor
+// docker container rm -f servidor
+
+
+---------------
+// SUBINDO UM CONTAINER COM VOLUME ANONIMO
+
+//Criando o volume; Não estamos passando a origem, portando o Docker entende que queremos criar um Volume Anonimo
+> docker container run -dit --name servidor -v /volume debian
+
+//Conferindo se deu certo
+> docker volume ls
+//Vemos o Volume com uma hash64 (volume anonimo)
+
+
+//Conferindo se o volume está montado no container
+> docker container inspect servidor | egrep volume
+
+
+//Podemos inspecionar o volume
+> docker volume inspect {nomeDoVolume}
+/> docker volume inspect 65169ddfc5b91ce1c18dec589862b30ea04f113c9b9791f1304e0366e1ba787a
+
+
+// Acessando as montagens
+> docker container exec servidor df -Th
+
+
+// Listando o conteudo do Volume
+> docker container exec servidor ls -lR /volume
+
+// Criando um arquivo no Volume
+> docker container exec servidor touch /volume/arquivo_do_volume
+
+// Acessando o arquivo criado
+> docker container inspect servidor | egrep volume
+
+// Criando outro arquivo mas colocando o diretório
+> sudo touch {deretório}
+/> sudo touch /var/lib/docker/volumes/5cc824d3c8598f3ba15ee59cab71c78b1f343e44c85bc7aff01fd8be4e359d7a/_data/arquivo2
+
+// Conferindo
+> docker container exec servidor ls /volume
+
+// Removendo o container
+> docker container rm -f servidor
+
+
+------------------------------
+//SUBINDO O CONTAINER COM VOLUME NOMEADO
+
+> docker container run -dit --name servidor -v volume:/volume debian
+// Não passamos o caminho, e sim um nome 'volume'
+
+
+// Conferindo: podemos ver o volume de nome 'volume'
+> docker volume ls
+
+
+// Acessando a pasta do volume
+> sudo ls -l /var/lib/docker/volumes/volume/_data
+
+
+
+//--------------------------------
+// Volume utilizando Mount:
+> docker container run -dit --name servidor2 --mount source=volume2,target=/volume2 debian
+
+// Conferindo
+> docker volume ls
+
+
+
+//--------------
+Continuando:
+
+
+// Inspecionando os volumes e formatando a saida de dados (json)
+> docker container inspect servidor --format '{{json .Mounts}}'
+//			pode ser '-f' também, ao invés de --format
+
+
+//Melhorando a saida de dados:
+> sudo apt-get install jq (ferramenta para fazer carrys em json)
+
+> docker container inspect --format '{{json .Mounts}}' | jq
+
+
+// Apagando os containers
+> docker container rm -f $(docker container ls -aq)
+
+
+// Listando os volumes
+> docker volume ls
+
+// Removendo volume
+> docker volume rm volume
+/> docker volume rm {nomeDoVolume}
+
+
+//Listando só o nome dos volumes
+> docker volume ls -q
+
+//Apagando todos os volumes
+> docker volume rm $(docker volume ls -q)
+
+
+
+
+-------------------------------------------------------
+-------------------------------------------------------
+# VOLUMES TEMPORÁRIOS (ficam na memória ram - Velocidade de input e output são mais rápidas)
+# TMPFS (Temporary File Storage)
+
+# --tmpfs (para criar esses volumes)
+
+# tmpfs (não é possível configurar, personalizar... Só tem origem e destino; Não podemos utilizar em swarm Cluster)
+
+
+//
+> docker container run -dit --name tmpfstest1 --mount type=tmpfs.destination=/app debian
+ou
+>  docker container run -dit --name tmpfstest2 --tmpfs /app debian
+
+
+// Dando um inspect
+> docker container inspect tmpfstest2 --format '{{json .Mounts  }}' | jq
+
+// Diretorios
+> docker container exec tmpfsteste2 df -Th
+
+
+// Removendo os containers
+> docker container rm -f tmpfstest1 tmpfstest
+
+> docker container rm -f tmpfstest1 tmpfstest2
+
+
+// Tamanho em bytes
+>  docker container run -dit --name tmpfsteste --mount type=tmp fs.destination=/app.tmpfs-size=100M debian
+
+// Removendo os containers]
+> docker container rm -f $(docker container ls -aq)
+
+
+---------------------
+// BACKUP
+
+// Criando container com volume
+> docker container run -dit -v /webdata --name webserver debian
+
+// Listando os containers
+> docker volume ls
+
+// Copiando um arquivo para o container docker
+> docker container cp ~/dockerfiles webserver:/webdata
+//		       origem	    nomeContainer : destino
+// Se eu quisesse copiar do container para a máquina, era só inverter
+
+
+> docker container exec webserver ls -l /webdata
+
+> docker volume ls
+
+
+//-------------
+// Fazendo o backup
+// --volumes-from   ->   Copia o volume de um outro container (LINK)
+
+> docker container run -dit --volumes-from webserver --name volumetest debian
+
+
+//Conferindo
+> docker container exec volumetest df -Th
+
+//Comparando com o webdata
+> docker container exec volumetest ls /webdata
+
+//Apagando o container
+> docker container rm -f volumetest
+
+
+//-----------
+// Executando o Backup
+
+> docker container ls
+
+> mkdir ~/backup
+
+> cd ~/backup
+
+
+//FAZENDO O BACKUP (guardando os itens)
+// Rodando um container
+> docker container run --rm --volumes-from webserver -v $(pwd):/backup alpine tar cvf /backup.tar /webdata
+
+// pegando os mesmo volumes do webserver
+// montando novo diretório chamado backup
+// tar : empacotador Unix
+// cvf : create, verbose, file
+// backup.tar : destino
+// webdata : origem
+
+> ls -lh (vendo o tamanho)
+
+
+//Vendo o conteúdo dele:
+> tar -tvf backup.tar
+
+
+// O que foi feito?
+// Criamos um container, dentro do container rodamos o backup com o volume do outro container e trouxemos para a nossa máquina
+// Isso é legal pois não estamos utilizando os recusos do container que está rodando a aplicação
+// Ou seja, a aplicação que está rodando lá, não terá nenhum problema
+
+
+//Removendo todos os volumes e containers (pois agora temos o backup)
+> docker container rm -f $(docker container ls -aq)
+
+> docker volume rm $(docker volume ls -q)
+
+
+// FAZENDO O RESTORE UTILIZANDO NOSSO BACKUP:
+
+
+//Subindo o container para o restore
+> docker container run -dit -v /webdata --name webserver2 debian
+
+
+// Conferindo que não tem nada nesse novo container:
+> docker container exec webserver2 ls -lR /webdata
+
+
+// RESTAURANDO O BAKCUP (pegando o backup e passando para o novo container):
+> docker container run --rm --volumes-from webserver2 -v $(pwd):/backup alpine ash -c "cd /webdata && tar xf /backup/backup.tar --strip 1"
+
+//									ash -c (execute um bash com o comando {})
+//											Entrando no diretório /webdata && rodar um tar para extrair o arquivo /backup/backup.tar.
+//															--strip 1 (corta o primeiro diretório. Foi feito o backup em webdata/dockerfiles... Agora será só dockerfiles/...
+
+
+// Conferindo se deu certo:
+> docker container exec webserver2 ls -l /webdata
