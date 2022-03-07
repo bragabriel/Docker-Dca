@@ -1,0 +1,182 @@
+**********************************************************************
+		DOCKER - AULA 05 - Volumes
+**********************************************************************
+
+# Relembrando (última aula):
+
+# Volume NOMEADO: > docker container run...   -v volumenomeado:/app      /Passamos -v {nomeVolume}:/{caminhoDestino}
+
+# Volume ANONIMO: > ... -v /app      //Só com o diretório de destino
+
+# Volume HOST: > ... -v /home/vagrant/volumehost:/app     // -v  {path}:/app
+
+
+----
+
+# -v  --volume   (volumes)
+# --mount  (utilizamos com clusters, pois o -v não vai funcionar)
+
+
+# --mount   ->  Aceita customizações
+# ex:  source=/home/vagrant/volume,target=/app
+
+# tmpfs -> Volume que fica na memória ram
+
+----
+
+#NFS -> Nwtwork file System (máquina que será um servidor de arquivos, para outras máquinas conectarem)
+
+----
+
+//Pingando
+> ping -c4 www.youtube.com
+
+//End DNS
+> dig www.youtube.com
+
+
+--START--
+
+//Instalando o Plugin:
+> docker plugin install vieux/sshfs
+// https://hub.docker.com/r/vieux/sshfs
+
+
+//Listando os Plugins instalados:
+> docker plugin ls
+
+
+2> vagrant up node02
+
+2> vagrant ssh node02
+
+2> sudo yum install vim -y (instalando o Vim)
+
+2> sudo vim /etc/ssh/sshd_config +65  (editando esse arquivo com Vim na linha 65)
+
+2> tecla 'i'
+
+2> // Trocar a linha 65 'no' -> 'yes'
+
+2> tecla 'esc'
+
+2> :wq
+
+2> sudo systemctl restart sshd  (ssh deamon) 
+
+2> ip -c -br a  (confirmando qual o IP a máquina node01 fala com a node02) (10.20.20.120)
+
+
+> ping -c4 10.20.20.120 (pingando a máquina node02)
+
+> docker volume create -d vieux/sshfs --name sshvolume -o sshcmd=vagrant@10.20.20.120:/vagrant -o password=vagrant (ssh cmd {comando a ser executado}  -  Aqui estamos compartilhando do diretório /vagrant na node02)
+
+> docker volume inspect sshvolume | jq  (Inspecionando o volume)
+
+//Subindo um container
+> docker container run --rm -v sshvolume:/data alpine ls /data
+//exec um container docker, remova ele depois de cumprir seu propósito
+//Montaremos um Volume em /data, a image vai ser Alpine, seu proposito é executar o "ls /data"
+
+
+2> cd /vagrant
+
+2> echo "<h1> SSHFS NAO USE EM PRODUCAO!!</h1>" > index.html
+//Criando um arquivo html
+
+
+> docker container run --rm -v sshvolume:/data alpine cat /data/index.html
+//Vendo através da máquina 01 por meio do SSH o conteúdo do index.html na máquina 02
+//Essa forma é muito lenta, não deve ser utilizado!! Principalmente em produção.
+
+
+2> exit
+
+2> exit
+
+> exit
+
+m> vagrant up master
+
+m> vagrant ssh master
+
+#NFS -> Nwtwork file System (máquina que será um servidor de arquivos, para outras máquinas conectarem)
+
+//Instalando o NFS Server
+m> sudo apt-get update && sudo apt-get install nfs-server -y
+
+m> mkdir -p /home/vagrant/storage   (Criando esse diretorio)
+
+m> sudo vim /etc/exports   (Criando vim)
+
+m> tecla 'i'
+
+m> "limpando o vim"
+
+m> 
+/home/vagrant/storage 10.20.20.0/24(rw)
+
+m> tecla 'esc'
+
+m> :wq
+
+
+//Comando automatizado, ao invés de acessar, limpar e escrever no vim na mão
+m> echo "/home/vagrant/storage 10.20.20.0/24(rw)| sudo tee -a /etc/exports
+
+
+m> echo "<h1> Volume NFS master.docker-dca.example</h1>" | tee /home/vagrant/storage/index.html
+//Criando um arquivo para acessarmos das outras máquinas
+
+m> cat /home/vagrant/storage/index.html  (Conferindo o arquivo)
+
+m> sudo systemctl restart nfs-server (reiniciando o server)
+
+m> showmount -e (Lista de exportes, conferindo)
+
+
+//Instalando o NFS nas máquinas
+
+node01
+> sudo apt-get install nfs-common -y
+
+
+node02
+2> sudo yum install nfs-utils -y
+
+
+> showmount -e master.docker-dca.example  (Retorna o export da máquina, NFS já está comunicando)
+
+2> showmount -e master.docker-dca.example  (Retorna o export da máquina, NFS já está comunicando)
+
+
+> docker plugin install trajano/nfs-volume-plugin --grant-all-permissions
+2> docker plugin install trajano/nfs-volume-plugin --grant-all-permissions
+
+
+> docker volume create -d trajano/nfs-volume-plugin --opt device=master.docker-dca.example:/home/vagrant/storage --opts nfsopts=hard,proto=tcp,nfsvers=3,intr,nolock volume_nfs 
+//Dizendo qual dispositivo ele vai conectar  (Passando as opções de criação do NFS)
+
+> docker volume inspect sshvolume | jq  (Inspecionando o volume)
+
+> docker volume ls
+
+2> sudo yum install jq -y
+
+2> docker volume inspect sshvolume | jq  (Inspecionando o volume)
+
+> curl -s localhost (Conferindo se está funcionando)
+
+// Listando os Plugins do Docker que estão instaladis
+2> docker plugin ls
+
+
+//Rodando o container 
+2> docker container run -dit --name webserver -v volume_nfs:/usr/share/nginx/html/ -p 80:80 nginx
+
+
+//Adicionando conteúdo compartilhado:
+m> echo "<h2> Novo conteudo para o volume compartilhado </h2>" | tee -a /home/vagrant/storage/index.html
+
+
+//
