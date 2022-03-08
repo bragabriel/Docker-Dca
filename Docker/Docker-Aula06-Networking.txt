@@ -1,0 +1,175 @@
+**********************************************************************
+		DOCKER - AULA 06 - Networking
+**********************************************************************
+
+
+# Recursos:
+
+	- vEth -> Virtual Ethernet (placa de rede Virtual)
+	- bridge -> Ponte (roteamento entre o host para o container)
+	- ipTables -> Firewall de sistema Linux
+
+
+
+
+# Network Drivers:
+
+Driver das redes:
+	- bridge (rede do tipo bridge: funciona para containers isolados que precisam de comunicação, é utilizada para liberar acesso a outras pessoas ao container)
+	Recebe o endereço IP da máquina e faz o roteamento para o endereço IP do container.
+	Rede BRIDGE -> Tem resolução de DNS + Conecte e Desconecte containers	
+
+	- host (rede do tipo host: funciona para containers isolados, ela remove a camada de isolamento entre o container docker e o host docker. Utiliza a rede direta da máquina)
+	Rede HOST -> COntainer IP = HOST IP
+
+	- overlay (rede do tipo overlay: rede de sobreposição, utilizamos essa rede quando falamos de docker swarm, e para comunicar os hosts docker entre si)
+	- macvlan (rede do tipo macvlan: endereço de máquina (mac adress), atrela o endereço mac ao container possibilitando que nós possamos utilizar os recursos de vlan (redes virtuais). Conseguimos separar os trafegos de vídeo, por exemplo
+	- none (rede sem rede: Quando queremos subir um container sem rede. Desabilita tudo de rede do container. Usamos quando queremos só fazer uma build de um container sem acesso externo.
+
+
+Plugins de drivers de rede...
+	- geralmente quando falamos de plugins de rede, estamos falando de cluster.
+
+
+----------------
+
+
+
+> docker container run -dit --name webserver nginx (subindo um container com a image nginx)
+
+> docker container ls (observamos que o container tem uma porta 'PORTS' de comunicação)
+
+//Excluindo o container
+> docker container rm -f webserver
+
+//Criando o container da forma correta:
+
+//Utilizando o '-p' -> publish 
+// -p / --publish  	ORIGEM:DESTINO		HOST:CONTAINER
+// -p 80:80  ->  Pegue toda conexao na porta 80 do host, direcione para a porta 80 do container
+
+> docker container run -dit --name webserver -p 80:80 nginx
+
+> curl localhost (vemos que ele direcionou para dentro do container)
+
+/> no navegador: 10.20.20.110 (verificando que o container subiu, acessando através da rede)
+
+> doker container rm -f webserver
+
+
+
+-----
+
+//Listando as redes do Docker:
+> docker network ls
+
+------
+BRIDGE
+// Utilizando a rede Bridge
+> docker container run -dit --name web --network bridge -p 80:80 nginx
+
+> docker network ls
+
+> ip -c br a
+
+> docker network inspect bridge | jq
+
+> sudo ss -ntpl | grep 80  (Listando as portas em uso do container - ntpl: numeric, tcp, processes, listening)
+
+> sudo iptables -nL (Vendo a tabela de regras - Ip's, Camadas, Portas...)
+
+> docker container rm -f web (Removendo o container)
+
+
+------
+HOST
+//Utilizando a rede Host
+> docker network ls
+
+> docker container run -dit --name web --network host nginx  (Diferente da rede bridge, não precisamos passar a porta, pois estamos conectados direto ao container)
+
+> docker container ls (podemos perceber que as PORTS estão vazias)
+
+> curl localhost:80 (continuamos acessando o nginx, pois temos um hoteamento direto)
+
+> sudo ss -ntpl | grep 80 (Não temos mais o docker proxy conectado na porta 80, nós temos o Nginx)
+
+> docker container inspect web | jq (Podemos verificar que não temos uma nova interface IP, pois o Host conecta direto, sem precisar criar o veth)
+
+> ip -c -br a (confirmando que não temos uma nova interface)
+
+> docker container rm -f web
+
+
+------
+NONE
+//Utilizando a rede none
+> docker network ls
+
+> docker container run -dit --name sem-rede --network none alpine ash  (EntryPoint: ash , para ele não subir e morrer apenas)
+
+> docker container exec sem-rede ip link show
+
+> docker container rm -f sem-rede (Removend o container)
+
+
+------
+// Removendo todos os containers
+> docker container rm -f $(docker container ls -aq)
+
+//DEFAULT BRIDGE
+//Criando dois containers sem especificar a rede
+> docker container run -dit --name container1 -h servidor debian
+
+> docker container run -dit --name container2 -h cliente debian
+
+> ip -c -br a
+
+> docker container exec container1 ip -c a show eth0
+
+> docker container exec container1 ping -c4 172.17.0.3  (container 1 pingando o container 2)
+
+> docker container exec container1 ping -c4 cliente 
+
+> docker container exec container2 ping -c4 servidor
+
+-----
+Subindo container com link (da forma errada)
+
+// Removendo todos os containers
+> docker container rm -f $(docker container ls -aq)
+
+> docker container run -dit --name container1 -h servidor debian
+
+> docker container run -dit --name container2 --link container1:servidor -h cliente debian
+
+> docker container exec container2 ping -c4 container1 (testando)
+
+> docker container rm -f container1 container2
+
+
+
+
+//Criando a Rede User Defined Bridge (Rede bridge defenida pelo usuário) (da forma correta)
+//Beneficios (DNS Automatico, Melhor isolamento, Conectar e Desconectar ON-THE-FLY, são configuraveis e personalizaveis)
+
+> docker network create --driver bridge --subnet 172.20.0.0/16 dca-lan
+// crie uma rede docker com o driver 'bridge', a subnet será 172.20.0.0 até 172.20.254.254, e o nome da rede será dca-lan
+
+> docker network inspect dca-lan | jq
+
+> docker container run -dit --name container1 -h servidor --network dca-lan debian (utilizando a rede para conectar os containers)
+
+> docker network inspect dca-lan | jq
+
+> docker container exec container1 ping -c4 cliente
+
+> docker network disconnect dca-lan container2 (remove o cabo de rede do container2)
+
+> docker network inspect dca-lan | jq
+
+> docker netwok connect dca-lan container2 --ip 172.20.0.200 (conectando o cabo de rede, conectando o ip novamente na rede, e passando qual IP queremos que utilize)
+
+> docker container rm -f container1 container2
+
+> docker container rm -f $(docker container ls -aq)   	(removendo todos os containers)
