@@ -1,0 +1,277 @@
+**********************************************************************
+		DOCKER - AULA 07 - Compose (docker-compose)
+**********************************************************************
+
+
+# Docker compose: Ferramenta que a Docker criou para poder definir e executar aplicativos que rodam em mais de um container.
+Vamos supor que precisamos subir um website que roda um banco de dados e a aplicação. Então para não ficarmos rodando o "docker container run" na mão para subir os containers, nós utilizamos o Docker Compose
+
+# Docker compose: utilizado para trabalhar com multi container
+
+# Funciona em qualquer tipo de ambiente: Produção, Homologação, Desenvolvimento, Testes...
+
+
+# 3 passos para trabalhar com docker compose:
+
+## 1 - Definir o ambiente com um Dokerfile, para uma melhor reprodução;
+## 2 - Definir os serviços que serão executados em um arquivo docker-compose.yml;
+## 3 - Executar o comando docker-compose up.
+
+
+### Criando um container SEM Docker-Compose:
+// docker container run -dit --name <NOME> -p 80:80 <IMAGEM>
+
+### docker-compose.yml -> Definir as estruturas de como serão executados os containers.
+// version -> define a versão do arquivo compose;
+// services -> define uma seção para os serviços;
+// build -> define o local do Dockerfile;
+// hostname -> define o hostname do container;
+// ports -> define quais portas serão publicadas;
+// restart -> define uma politica de restart do container.
+
+
+// Criando o seguinte container COM Docker-Compose:
+// docker container run -dit --name webserver --hostname webserver -p 80:80 image_webserver
+
+
+vim docker-compose.yml
+
+
+version: '3'
+
+services: 
+	webserver:
+		build: .
+		hostname: webserver
+		ports: -80:80	
+		restart: always     # unless-stopped , always , on-failure , no (DEFAULT)
+		
+
+
+> docker ssh node01
+
+> docker --version
+
+> docker system info | grep Version  (Vendo a versão do docker, precisamos utilizar uma versão compativel com o docker compose 
+(https://docs.docker.com/compose/compose-file/)
+
+
+//Instalando o Docker-Compose
+//https://docs.docker.com/compose/install/
+
+> sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+> sudo chmod +x /usr/local/bin/docker-compose (dando permissão para o docker-compose)
+
+> docker-compose --version (vendo qual versão do Docker-Compose foi instalada)
+
+> cd dockerfiles/webserver/
+
+//Subindo um container sem utilizar o docker-compose:
+/> docker container run -dit --name <NOME> -p 80:80 <IMAGEM>
+//					porta a ser utilizada
+
+> vim docker-compose.yml
+
+> tecla 'i'
+
+
+version: '3'
+
+services: 
+	webserver:
+		build: .
+		hostname: webserver
+		ports: -80:80	
+		restart: always     # unless-stopped , always , on-failure , no (DEFAULT)
+
+
+> tecla 'esc'
+
+> :wq
+
+
+//Fazendo o build com o docker-compose:
+> docker-compose up -d
+
+> docker image ls (Confirmando que criou)
+
+> docker-compose ps (Checando se o arquivo subiu o compose)
+
+> docker network ls (Podemos observar que foi criado um webserver_default do tipo bridge (default)
+
+> docker-compose stop (Parando os containers)
+
+> docker-compose ps (Podemos verificar que o container está parado)
+
+> docker-compose up -d (Rodando o container novamente) 
+
+> docker-compose down (derrubando o serviço - Para o Container, Remove o Container e Remove a Rede)
+
+//Adicionando uma pasta
+> mkdir html
+
+//Criando um arquivo .html
+> echo "<h1>Curso Docker DCA - youtube.com/caiodelgadonew</h1>" > html/index.html
+
+> vim docker-compose.yml
+
+
+> vim docker-compose.yml
+
+> tecla 'i'
+
+
+version: '3'
+
+services: 
+	webserver:
+		build: .
+		# image: caiodelgadonew/webserver:apache2  (pegando imagem do Docker Hub)
+		hostname: webserver
+		ports: -80:80	
+		restart: always     # unless-stopped , always , on-failure , no (DEFAULT)
+		volumes:
+			- $PWD/html:/var/www/html
+		#PWD : Print Working Directory
+
+> tecla 'esc'
+
+// Subindo o server
+> docker-compose up -d
+
+> :wq
+
+
+
+// Trabalhando com um Webserver + Banco de dados utilizando docker-compose
+// Subiremos um serviço de Wordpress junto com um serviço de MySQL
+> vim wordpress-compose.yml
+
+version: '3'
+
+# é como se fosse um: docker volume create mysql_db
+volume:
+        mysql_db:
+
+#docker network create wordpress_net
+networks:
+        wordpress_net:
+
+services:
+        #docker container run --name wordpress -p 80:80 \
+        #                     -e WORDPRESS_DB_HOST=db \
+        #                     -e WORDPRESS_DB_USER=wpuser \
+        #                     -e WORDPRESS_DB_PASSWORD=123
+        #                     -e WORDPRESS_DB_NAME=wordpress
+        #                     wordpress
+
+        wordpress:
+                image: wordpress
+                restart: always
+                ports:
+                        - 80:80
+                enviroment:
+                        WORDPRESS_DB_HOST: db
+                        WORDPRESS_DB_USER: wpuser
+                        WORDPRESS_DB_PASSWORD: 123
+                        WORDPRESS_DB_NAME: wordpress
+                networks:
+                        - wordpress_net
+                depends_on:
+                        - db
+			 #depende do banco de dados subir
+
+        db:
+                image: mysql:5.7
+                restart: always
+                volumes:
+                        - mysql_dv:/var/lib/mysql
+                ports:
+                        - 3306:3306
+                enviroment:
+                        MYSQL_DATABASE: wordpress
+                        MYSQL_USER: wpuser
+                        MYSQL_PASSWORD: 123
+                        MYSQL_RANDOM_ROOT_PASSWORD: '1'
+                networks:
+                        - wordpress_net
+
+
+
+
+> 'esc'
+
+> :wq
+
+
+//docker-compose: busca o docker-compose.yml, então teremos que:
+> docker-compose -f wordpress-compose.yml up -d     
+//Subindo toda a infraestrutura para podermos utilizar este site
+// -f : especifíca qual arquivo compose será utilizado, invés de buscar pelo arquivo padrão 'docker-compose.yml'
+
+
+> docker-compose -f wordpress-compose.yml ps
+
+
+//Verificando se funcionou
+> na internet: 10.10.20.110
+
+
+> docker-compose -f wordpress-compose.yml ps  (Acessando o Log do container)
+
+> docker-compose -f wordpress-compose.yml logs -f (Deixa os logs rolando) (Podemos dar um f5 na página e ver os logs no terminal)
+
+
+//docker-compose -f wordpress-compose.yml up (Sobe o container)
+//docker-compose -f wordpress-compose.yml stop (Para o container)
+//docker-compose -f wordpress-compose.yml start (Inicia o container)
+//docker-compose -f wordpress-compose.yml down (Mata o container)
+//docker-compose -f wordpress-compose.yml ps (Mostra os status do container)
+
+
+> docker-compose -f wordpress-compose.yml down (Matando o container)
+
+> docker-compose -f wordpress-compsoe.yml up -d  (Subindo o container novamente - Não perdemos o conteudo do site pois estamos utilizando volumes, e o container down NÃO destroi os volumes!)
+
+> docker-compose down --help
+
+/> docker-compose -f wordpress-compose.yml down -v (Matando o container E O VOLUME!!)
+
+
+
+///
+
+Subindo 3 servidores webserver de uma vez com docker-compose:
+
+> vim docker-compose.yml
+
+> tecla 'i'
+
+version: '3.9'
+
+services:
+        webserver:
+                # build: .
+                image: caiodelgadonew/webserver:apache2
+                hostname: webserver
+                # ports:
+                #        - 80:80
+                deploy:
+                        replicas: 1  # PODEMOS ALTERAR AQUI A QTD DE REPLICAS
+                restart: on-failure #always # unless-stopped , always , on-failure , no (DEFAULT)
+                volumes:
+                        - $PWD/html:/var/www/html
+                          #PWD = Print Working Directory
+
+> tecla 'esc'
+
+> :wq
+
+> docker-compose up -d
+
+//Outra forma de aumentar a qtd de serviços é:
+> docker-compose scale webserver=3
+
+//Diminuindo o scale
+> docker-compose scale webserver=2
