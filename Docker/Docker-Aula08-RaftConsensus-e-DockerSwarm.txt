@@ -1,0 +1,187 @@
+**********************************************************************
+		DOCKER - AULA 08 - Raft Consensus & Docker Swarm
+**********************************************************************
+
+# Docker Swarm:
+
+Docker Swarm é a maneira de rodar o Docker em Cluster (uma orquestração de containers)
+
+É Ferramenta para Orquestração de Containers
+
+
+# Cluster: 
+
+Conjunto de computadores que trabalham em grupo de forma a ser visto como um
+sistema único.
+Ou seja, se temos várias máquinas com um objetivo único de fornecer um determinado serviço, podemos chamar isso de Cluster.
+
+Usamos o Cluster para ganhar mais poder computacional e maior confiabilidade para podermos orquestar um numero de máquinas de baixo custo,
+para obter um maior poder de processamento
+
+
+
+Ex: precisamos para subir nossos servidores:
+
+32 Cores - 256 GB memoria ram = Uma máquina só = Muito caro $$$$$
+
+4 Cores - 8 GB ram = Mais máquinas = Mais barato $$ = Cluster ajuda nisso = Horizontal Scaling -> Escalonamento Horizontal
+
+
+-----
+
+# Node (Nó) -> Um elemento computacional de um cluster
+
+# Master -> Manager
+# Node02 -> Worker
+# Node02 -> Worker
+
+
+
+Nodes (podemos chamar de):
+	Main / Secondary
+	Conductor / Follower
+	Leader / Follower
+	Host / Client
+	Sender / Receiver
+	Producer / Consumer
+	Primary / Replica
+	Manager / Worker
+
+------
+
+# RAFT CONSENSUS
+
+Quando trabalhamos com sistemas distribuidos (sistemas que rodam em diversos computadores), temos um
+algoritmo para poder dar ordem
+
+
+RAFT = JANGADA
+CONSENSUS = CONSENSO
+
+= Com quantos paus se faz uma jangada (canoa) ??
+
+Jangada -> 3 Toras de madeira
+
+Sistema Único -> Armazena um valor único (consenso) (ninguém vai questionar esse valor)
+
+
+---
+
+Se temos só um nó = Tudo ok
+
+Se temos mais de um nó, o Raft entra em ação (Eles esperam o comando de um líder)
+Se não houver nenhum líder, eles entram em estado de candidato
+Ele envia um comando aos outros nós, e diz: "eu quero seu voto"; e os outros nós votam.
+Quem tiver mais votos, é o nó que virará líder
+
+Se alguma máquina mandar um novo valor, o líder vai salvar este valor, e direcionar para as outras máquinas (conenso)
+
+--
+
+RAFT - Tolerância
+
+Tolera até (N-1)/2 falhas
+Quorum de (N/2) + 1
+
+ex:
+temos 1 tora (servidor)
+então (1-1)/2 = 0
+= Se tivermos um cluster com um nó; e esse nó falhar, o cluster morre.
+
+
+temos 2 toras (servidores)
+então (2-1)/2 = 0.5 = 0
+= Se tivermos um cluster com dois nós; e um nó falhar, o cluster morre.
+
+
+temos 3 servidores [Por isso dizemos que precisamos de no mínimo 3 toras para fazer uma jangada)
+então (3-1)/2 = 1
+= Se tivermos um cluster com tres nós; e um nó falhar, o cluster tem mais 2, então continua vivo.
+
+
+
+== SPLIT BRAIN -> CEREBRO PARTIDO:
+O que acontece é: Se temos 2 servidores, e um morre. Eles entram em parafuso. O servidor que ainda está vivo pergunta:
+"Sou eu que estou fora, ou é o outro que está fora; não sei"...
+
+Então para não "fazer merda", vou ficar quieto, e entra em estado de não operacional.
+
+
+Exemplo se tivermos 3 servidores e um morre. 
+Os outros servidores começam a se comunicar. Como eles são a maioria, eles continuam trabalhando
+
+
+--
+
+Recomenda-se não utilizar mais do que 5 nós masters, por conta da replicação de dados.
+Perderemos muito desempenho.
+
+---
+
+# Services -> Serviço -> Estado desejado (Pão com manteiga e mortadela)
+# Tasks -> Tarefas
+		1. Comprar o pão, manteiga e mortadela;
+		2. Cortar o pão;
+		3. Passar a manteiga;
+		4. Colocar a mortadela.
+
+
+
+
+# Task -> Unidade Atomica Agendada em um Swarm
+
+
+---
+
+# Serviços replicados x Globais
+
+# Global: Roda em todos os nós
+# Replicado: Roda em uma quantidade determinada de nós
+
+------------
+//Destruiremos todas as máquinas já utilizadas até aqui. Toda infraestrutura.
+//Para termos uma máquina mais crua, sem configurações
+
+> vagrant destroy -f    (  :>(   )
+
+> vagrant up master node01 node02   (criando as máquinas novamente)
+
+> vagrant ssh master
+
+
+//Podemos verificar que temos uma interface "enp0s8"
+m> ip -c -br a
+
+
+//Verificando o IP da interface de rede que as máquinas usam para se comunicar
+m> ip -c -br a show enp0s8 
+
+
+//Criando o cluster
+m> docker swarm init --advertise-addr 10.20.20.100
+// inicializando o docker swarm 
+// --advertise-addr : interface que usaremos para comunicar com o cluster (10.20.20.100)
+
+//Copiamos o comando que ele gera
+
+vagrant ssh node01
+> sudo usermod -aG docker vagrant
+
+
+> exit
+
+> vagrant ssh node01
+
+//Colamos o comando que gerou na master
+> docker swarm join --token SWMTKN-1-3ofpqf2aasyhhk2dqztw3s59pqs9njhrco4y8or68p5ismc5um-7nnj9ox4cqxn1762g1l3tt734 10.20.20.100:2377
+
+//Comando para gerar o worker
+m> docker swarm join-token worker
+
+//listando os nodes
+m> docker node ls
+
+
+//Transformando o node02 em manager
+m> docker node promote node02.docker-dca.example
+ 
