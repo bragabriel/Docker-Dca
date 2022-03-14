@@ -1,0 +1,167 @@
+**********************************************************************
+		DOCKER - AULA 09 - Registry, Services e Tasks
+**********************************************************************
+
+
+# Hoje guardamos nossas images no DockerHub
+
+# Quando trabalhamos com clusters, preciamos configurar um *private registry*, motivos:
+
+	1. Dockerhub Rate Limiting; 
+// O dockerhub tem um limite de 100imagens que pode baixar a cada 6 horas.
+
+//Solução: Mandamos todos nossos pulls para o Private Registry
+
+//Apenas o registry baixa a imagem do dockerhub, e as máquinas fazem pull apenas no registry
+
+	2. Segurança;
+	3. Velocidade.
+
+
+
+
+vagrant ssh master
+
+m> docker node ls
+
+
+vagrant ssh registry
+
+//Como fazemos para colocar a máquina registry dentro do cluster:
+m> docker swarm join-token worker 	(pegando o token de worker)
+
+//Copia o comando que aparecer
+
+r> //cola o comando
+
+r> docker swarm join --token SWMTKN-1-3ofpqf2aasyhhk2dqztw3s59pqs9njhrco4y8or68p5ismc5um-7nnj9ox4cqxn1762g1l3tt734 10.20.20.100:2377
+
+
+m> docker node ls
+
+//Alterando o arquivo .json, escrevendo nele, restartando o sistema
+m> echo '{ "insecure-registries" : ["registry.docker-dca.example:5000"] }' | sudo tee /etc/docker/daemon.json ; sudo systemctl restart docker
+
+node01> echo '{ "insecure-registries" : ["registry.docker-dca.example:5000"] }' | sudo tee /etc/docker/daemon.json ; sudo systemctl restart docker
+
+node02> echo '{ "insecure-registries" : ["registry.docker-dca.example:5000"] }' | sudo tee /etc/docker/daemon.json ; sudo systemctl restart docker
+
+registry> echo '{ "insecure-registries" : ["registry.docker-dca.example:5000"] }' | sudo tee /etc/docker/daemon.json ; sudo systemctl restart docker
+
+
+//Fazendo o deploy do registry
+r> docker container run -dit --name registry -p 5000:5000 registry:2
+
+r> docker image ls
+
+// Enviando uma imagem para o registry
+r> docker pull alpine (baixando a imagem do alpine)
+
+r> docker image ls (conferindo)  (temos uma imagem na máquina, mas não significa que está no registry)
+
+//Enviando a imagem para o registry
+r> docker image tag registry.docker-dca.example:5000/alpine   (alterando a tag da image alpine)
+
+r> docker image ls (conferindo se funcionou)
+
+r> docker push registry.docker-dca.example:5000/alpine (enviando para o registry.docker-dca/example)
+
+m> curl https://registry.docker-dca.example:5000/v2/_catalog  (veremos os repositorios que temos dentro do registry) (dando um Curl no catálogo dela)
+
+r> sudo apt-get install jq -yq > /dev/null 2>&1   
+
+r> curl https://registry.docker-dca.example:5000/v2/_catalog | jq
+
+r> docker volume ls
+
+m> docker node ls
+
+m> docker service --help
+
+
+//Criando um service
+m> docker service create --name webserver registry.docker-dca.example:5000/nginx
+
+m> docker service ls
+
+m> docker service ps webserver (verifica o estado da task, o id dela, e onde ela está sendo executada)
+
+m> docker service update --publish-add 80 webserver  (Publicando a porta de comunicação)
+
+m> docker service ls
+
+m> docker service ps webserver
+
+m> docker service inspect webserver --pretty
+
+m> docker service rm webserver (removendo o webserver)
+
+m> docker service create --name pingtest registry.docker-dca.example:5000/alpine ping google.com  (Criando um serviço do alpine rodando ping para o google)
+
+m> docker service ls (verificando onde ele está rodando)
+
+m> docker service logs pingtest (visualizando os logs desse serviço, para não precisar acessar o outro nó para verificar)
+
+m> docker service scale pingtest=3 (scalando e service para 3)
+
+m> docker service ls (conferindo)
+
+m> docker service logs -f pingtest (vendo o logs de todos os containers de todas as máquinas)
+
+m> docker service update --replicas 10 pingtest (outra forma de scalar o serviço)
+
+m> docker service ping ps
+
+m> docker node ps master.docker-dca.example (dando um PS no node)
+
+m> docker node ps registry.docker-dca.example (dando um PS no registry)
+
+m> docker service rm pingtest (removendo o serviço)
+
+m> docker service ls (conferindo)
+
+m> exit
+
+m> vagrant halt
+
+---
+
+# SERVIÇOS e TAREFAS
+
+
+## Service (Serviço) -> Estado desejado (3 nginx por exemplo)
+
+## Task (Tarefa) -> Aplicação do serviço (ordem de como chegar ao estado desejado)
+
+
+---
+
+# TASKS E AGENDADORES
+
+## Tasks -> Unidade atomica (um único item agendado no swarm - O swarm cria tasks para chegar no estado desejado; distribui as tarefas aos agendadores [um prepara a massa, o outro o recheio...])
+
+## Agendadores -> Agendam, realizam as taregas e apontam para os nodes
+
+
+- Estudo da task:
+	assigned (dei a tarega ao nó)
+	prepared (o docker está preparando a task, começando a rodar)
+	running (está em execução)
+
+
+- Services
+	Replicas
+	Global
+
+
+- Tipos de Deploys (tipos de implantação em portugues):
+	Replicated (quero X tasks)
+	Global (quero 1 container em cada nó)
+
+
+
+
+
+
+ 
+
