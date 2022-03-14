@@ -34,7 +34,7 @@ m> docker swarm join-token worker 	(pegando o token de worker)
 
 r> //cola o comando
 
-r> docker swarm join --token SWMTKN-1-3ofpqf2aasyhhk2dqztw3s59pqs9njhrco4y8or68p5ismc5um-7nnj9ox4cqxn1762g1l3tt734 10.20.20.100:2377
+r> docker swarm join --token {### Chave de Acesso Privada}  10.20.20.100:2377
 
 
 m> docker node ls
