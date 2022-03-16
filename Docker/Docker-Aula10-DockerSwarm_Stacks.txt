@@ -1,0 +1,407 @@
+**********************************************************************
+		DOCKER - AULA 10 - Docker Swarm - Stacks
+**********************************************************************
+
+
+
+
+
+vagrant up
+
+r> docker container ls
+
+r> docker container start registry
+
+m> vagrant node ls
+
+m> docker service create --name pingtest registry.docker-dca.example:5000/alpine ping google.com(Criando o serviço do pingtest)
+
+m> docker service ps pingtest
+
+m> docker service update --replicas 7 pingtest (atualizando o serviço e a quantidade de replicas)
+
+m> docker service ps pingtest (confirmando a quantidade)
+
+
+
+//Como fazemos a manutenção em um nó, sem precisar desligar a máquina??
+//Primeiro fazer o drain dela, e aguardar que seus serviços sejam transferidos
+
+m> docker node update node01.docker-dca.example --availability drain
+//docker ndoe update: atualizando um nó do docker
+// --availability drain : estamos transferindo o serviço, drenando ele e jogando para outros serviços
+
+m> docker node ls
+
+m> docker service ps pingtest (verificando que o service foi desligado e transferido)
+
+m> docker node inspect node01.docker-dca.example (inspecionando o node01)
+
+m> sudo apt-get install jq (instalando o jq)
+
+m> docker node inspect node01.docker-dca.example | jq  (deixando mais fácil de ver)
+
+m> docker node inspect --pretty node01.docker-dca.example (deixando mais fácil ainda de ver)
+
+
+-- Desligamos o nó, trocamos a memória, ligamos a máquina de novo e percebemos que a máquina ainda está em estado de drain --
+
+//Precisamos dizer ao Swarm que a máquina agora está ativa
+
+m> docker node update node01.docker-dca.example --availability active node01.docker-dca.example
+
+m> docker service ps pingtest (a máquina ainda não está recebendo nenhum serviço, mesmo estando ativa)
+
+m> docker service inspect --pretty pingtest (podemos perceber que nosso serviço está rodando como replicado)
+
+//Só voltar o nó para a atividade, não significa que estará em uso, pois o serviço já está no estado desejado
+//O docker swarm faz que a gente chegue no estado desejado através das tasks e agendamentos
+
+m> docker service scale pingtest=10 (aumentando o número de serviços)
+
+//Agora, ele colocará pelo menos um serviço no nosso nó ativo, para atingir o estado desejado
+
+// Antes, o serviço já estava no estado desejado, por isso não utilizou o nó01, contudo, ao criarmos mais serviços, ele voltou a ser utilizado.
+
+m> docker service rm pingtest (removendo o serviço)
+
+m> docker service ls (conferindo se o serviço foi removido)
+
+
+//Podemos também desligar a máquina para dar a manutenção, mas pode ocorrer a perda de dados!!
+
+
+----
+
+# SECRETS: dado que não deve ser transmitido pela rede ou armazenado sem criptografia
+
+# Blob: Binary Large Object OU Basic Large Object
+	Objt grande binário	Obj grande básico
+
+
+m> docker secret ls (ver os secrets)
+
+
+//Criando o secret
+m> docker secret create <SECRET NAME> (INPUT)
+//Quando criarmos o secret, ele vai ficar em:
+//  /run/secrets/senha_db
+
+
+m> echo "gabriel123" | docker secret create senha_db   (uma das formas de criar o secret, nossa nenha neste caso é gabriel123)
+//não é a melhor forma, pois fica no history da máquina
+
+
+m> docker secret inspect --pretty senha_db  (inspecionando nosso secret)
+//Podemos perceber que não da para ver o conteúdo dele.
+
+
+//Criando nosso secret
+m> docker service create --name mysql_database --publish 3306:3306/tcp --secret senha_db -e MYSQL_ROOT_PASSWORD_FILE=/run/secrets/senha_db registry.docker-dca.example:5000/mysql:5.7
+//							porta											imagem no registry	
+
+m> sudo apt-get install mariadb-client -y >/dev/null 2>&1  (Instalando o mariaDB)
+//					            não mostrar na tela
+
+
+m> mysql -h node01.docker-dca.example -u root -pgabriel123
+// Conecte com o usuário root e a senha gabriel123
+
+
+//Testando:
+> CREATE DATABASE gabriel;
+
+> SHOW DATABASE;
+
+> exit
+
+
+m> mysql -h node01.docker-dca.example -u root -p
+//Conectando no banco, mas assim temos que digitar a senha, ao invés de já passar ela direto
+
+
+m> docker service rm mysql_database (removendo o database)
+
+
+
+----
+
+#NETWORK
+
+m> docker network ls
+
+m> docker network create -d overlay dca-overlay (criando uma network)
+
+m> docker network ls (verificando se deu certo)
+
+m> docker network inspect dca-overlay (inspecionando a rede)
+
+m> docker service create --name webserver --publish target=80,published=80 --network dca-overlay registry.docker-dca.example:5000/nginx  
+//							alvo,  porta publicada				imagem na registry
+//						fora do container, dentro do container
+
+
+m> docker service ps webserver (verificando que a máquina está rodando no node02)
+//Contudo não criamos essa network no node02
+
+
+//Conectando na node02
+2> vagrant ssh node092
+
+2> vagrant container ls
+
+2> docker network ls
+
+
+m> docker service scale webserver=3 (vendo que ela passou para as outras máquinas, escalou os serviços para as outras máquinas)
+
+//A única máquina que não está rodando o seviço é a node01
+//Mesmo sem ter container, pois as redes do swarm são distribuidas em todos os nós do cluster. O que está acontecendo é o node01 está direcionando a gente, através da rede de ingress, para um local que está rodando o container
+
+
+m> docker service rm webserver
+
+
+
+----
+
+#VOLUMES
+
+
+//Instalando o plugin trajano
+m> docker plugin install trajano/nfs-volume-plugin --grant-all-permissions
+
+1> docker plugin install trajano/nfs-volume-plugin --grant-all-permissions
+
+2> docker plugin install trajano/nfs-volume-plugin --grant-all-permissions
+
+
+//Instalando o NFS-server
+m> sudo apt-get install nfs-server -y
+
+
+m> mkdir -p /home/vagrant/storage
+
+m> echo "/home/vagrant/storage/ 10.20.20.0/24(rw)" | sudo tee -a /etc/exports/home/vagrant/storage/ 10.20.20.0/24
+
+m> sudo systemctl restart nfs-server
+
+1> sudo apt-get install nfs-common-y
+
+2> sudo yum install nfs-utils -y
+
+2> sudo showmount -e master.docker-dca.example
+
+
+//Criando o volume:
+m> docker volume create -d trajano/nfs-volume-plugin --opt device=master.docker-dca.example:/home/vagrant/storage --opt nfsopts=hard,proto=tcp,nfsvers=3,intr,nolock volume_nfs
+
+//Inspecionando o volume:
+m> docker volume inspect volume_nfs | jq
+
+
+m> echo "<h1> Volume NFS master.docker-dca.example</h1>" | tee /home/vagrant/storage/index.html  (criando nosso arquivo HTML)
+
+
+//Criando nosso serviço:
+m> docker service create --name webserver --replicas 3 --publish 80:80 --network dca-overlay --mount source=volume_nfs,target=/usr/share/nginx/html registry.docker-dca.example:5000/nginx
+
+
+m> docker service ps webserver
+
+m> curl registry.docker-dca.example
+
+m> docker service rm webserver (removendo)
+
+
+
+----
+
+# STACK (versão do compose > 3)
+
+Docker Stack Deploy
+
+
+m> mkdir ~/stack
+
+m> cd ~/stack
+
+m> vim webserver.yml
+
+m>tecla 'i'
+
+version: '3.9'
+
+services:
+	webserver:
+		image: registry.docker-dca.example:5000/nginx
+	hostname: webserver
+	ports:
+		- 80:80
+
+
+m>tecla 'esc'
+
+m> :wq
+
+
+//Rodando a stack
+m> docker stack deploy --compose-file webserver.yml webserver-nginx    (ou > docker stack deploy -c)
+
+m> docker stack ls  (vendo que estamos rodando o serviço webserver-nginx)
+ 
+m> docker stack services webserver-gninx (trás um resumo)
+
+m> docker stack ps webserver-nginx
+
+m> curl master.docker-dca.example
+
+
+m> vim webserver.yml 
+
+
+
+m>tecla 'i'
+
+version: '3.9'
+
+services:
+	webserver:
+		image: registry.docker-dca.example:5000/nginx
+	hostname: webserver
+	ports:
+		- 80:80
+	deploy:
+		mode: global
+		replicas: 2
+		restart_policy:
+			condition: on-failure
+
+m>tecla 'esc'
+
+m> :wq
+
+
+//Fazendo o deploy do serviço
+m> docker stack deploy -c webserver.yml webserver-nginx
+
+
+//Conferindo:
+m> docker stack services webserver-nginx
+
+
+m> docker service rm webserver-nginx
+
+//Removendo a stack
+m> docker stack rm webserver-nginx
+
+m> docker stack ls
+
+
+
+
+----
+# CONSTRAINTS
+
+
+m> vim webserver.yml
+
+
+m>tecla 'i'
+
+version: '3.9'
+
+services:
+	webserver:
+		image: registry.docker-dca.example:5000/nginx
+	hostname: webserver
+	ports:
+		- 80:80
+	deploy:
+		mode: replicated
+		replicas: 4
+		placement:
+			constraints: 
+				- node.role==manager
+		restart_policy:
+			condition: on-failure
+
+m>tecla 'esc'
+
+m> :wq
+
+
+//Rodando
+m> docker stack deploy -c webserver.yml nginx-webserver
+
+m> docker stack ps nginx-webserver
+
+m> docker service inspect nginx-webserver --pretty
+
+
+---
+
+#LABEL -> Etiqueta
+
+m> docker node ls
+
+//Adicionando uma etiqueta no node01
+m> docker node update --label-add os=ubunto18.04 node01.docker-dca.example  
+
+
+//Conferindo
+m> docker node inspect --pretty node01.docker-dca.example
+
+
+//Adicionando outra label
+m> docker ndoe update --label-add disk=ssd node01.docker-dca.example
+
+
+m> vim webserver.yml
+
+
+m>tecla 'i'
+
+version: '3.9'
+
+services:
+	webserver:
+		image: registry.docker-dca.example:5000/nginx
+	hostname: webserver
+	ports:
+		- 80:80
+	deploy:
+		mode: replicated
+		replicas: 4
+		placement:
+			constraints: 
+				- node.role==worker
+				- node.labels.os==ubunto18.04
+				- node.labels.location=us-east-1
+		restart_policy:
+			condition: on-failure
+
+m>tecla 'esc'
+
+
+m> docker stack deploy -c webserver.yml nginx-webserver  (agora nosso nó precisa rodar em máquinas que tem ubunto 18.04)
+
+m> docker stack rm nginx-webserver
+
+
+
+----
+
+# AB -> Apache Benchmark
+
+
+//Teste
+
+//Fazendo 100 conexoes concorrentes e 10.000 tentativas de conexões
+m> ab -n 10000 -c 100 https://master.docker-dca.example:8080/
+//A memória e a CPU vão ficar no talo (Por isso é importante limitar a CPU e a memória)
+
+m> docker stack ls
+
+m> docker stack rm wordpress-stack
+
