@@ -1,4 +1,4 @@
-**********************************************************************
+  **********************************************************************
 		DOCKER - AULA 07 - Compose (docker-compose)
 **********************************************************************
 
@@ -162,7 +162,7 @@ services:
         #docker container run --name wordpress -p 80:80 \
         #                     -e WORDPRESS_DB_HOST=db \
         #                     -e WORDPRESS_DB_USER=wpuser \
-        #                     -e WORDPRESS_DB_PASSWORD=123
+        #                     -e WORDPRESS_DB_PASSWORD= <>
         #                     -e WORDPRESS_DB_NAME=wordpress
         #                     wordpress
 
@@ -174,7 +174,7 @@ services:
                 enviroment:
                         WORDPRESS_DB_HOST: db
                         WORDPRESS_DB_USER: wpuser
-                        WORDPRESS_DB_PASSWORD: 123
+                        WORDPRESS_DB_PASSWORD: <>
                         WORDPRESS_DB_NAME: wordpress
                 networks:
                         - wordpress_net
@@ -192,7 +192,7 @@ services:
                 enviroment:
                         MYSQL_DATABASE: wordpress
                         MYSQL_USER: wpuser
-                        MYSQL_PASSWORD: 123
+                        MYSQL_PASSWORD: <>
                         MYSQL_RANDOM_ROOT_PASSWORD: '1'
                 networks:
                         - wordpress_net

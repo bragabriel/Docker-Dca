@@ -276,7 +276,7 @@ Dentro do arquivo:
 
 
 //Agora iremos mandar a image para o DockerHub
-> docker login -u gabrielbragasilva(Logando no Docker Hub)
+> docker login -u <username>(Logando no Docker Hub)
 
 > (inserir a password)
 

@@ -104,7 +104,7 @@ m> sudo apt-get install mariadb-client -y >/dev/null 2>&1  (Instalando o mariaDB
 //					            não mostrar na tela
 
 
-m> mysql -h node01.docker-dca.example -u root -pgabriel123
+m> mysql -h node01.docker-dca.example -u root -p<SENHA>
 // Conecte com o usuário root e a senha gabriel123
 
 

@@ -173,7 +173,7 @@ vagrant ssh node01
 > vagrant ssh node01
 
 //Colamos o comando que gerou na master
-> docker swarm join --token SWMTKN-1-3ofpqf2aasyhhk2dqztw3s59pqs9njhrco4y8or68p5ismc5um-7nnj9ox4cqxn1762g1l3tt734 10.20.20.100:2377
+> docker swarm join --token <TOKEN> 10.20.20.100:2377
 
 //Comando para gerar o worker
 m> docker swarm join-token worker
