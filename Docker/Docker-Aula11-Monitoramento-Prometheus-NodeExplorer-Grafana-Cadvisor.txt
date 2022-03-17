@@ -1,0 +1,82 @@
+*******************************************************************************************************************
+		DOCKER - AULA 11 - Monitoramento (Prometheus + Node Exporter + Grafana + Cadvisor
+*******************************************************************************************************************
+
+
+
+
+# PROMETHEUS
+
+Sistema de monitoramento;
+Ferramenta de monitoramento open source; Boa parte da indústria que utiliza container, utiliza Prometheus. (Ferramenta gratuita)
+
+Agrega todas as métricas de aplicação em uma infraestrutura, utiliza um Time Series Database -> Banco que dados que relacionado a série de tempo.
+
+
+Para trabalhar com Prometheus, utilizaremos a ferramenta: node-exporter  (para construir os arquivos de log), é básicamente um SCRAPPER [raspar] - Raspagem de métricas
+
+## node-exporter
+-> SCRAPPER (raspagem de métricas)
+
+
+## CAdvisor / Container Advisor
+-> exporta as métricas do container
+
+
+## Grafana
+-> Dashboard para o monitoramento
+
+
+---
+
+m> vagrant ssh master
+
+m> mkdir -p ~/monitoring/config   (Para podermos configurar o Prometheus)
+
+
+m> vim ~/monitoring/config/prometheus.yml
+
+m> tecla 'i'
+
+global:
+	scrape_interval: 15s
+	evaluation_interval: 15s
+	external_labels:
+		monitor: 'my-project'
+	
+scrape_configs:
+	- job_name: 'prometheus'
+	scrap_interval: 5s
+	static_configs:
+		- targets: ['localhost:9090']
+
+	- job_name: 'cadvisor'
+	scrape_interval: 5s
+	dns_sd_configs:
+	- names:
+		- 'tasks.cadvisor'
+		type: 'A'
+		port: 8080
+
+	- job_name 'node-exporter'
+	scrapte_interval: 5s
+	dns_sd_configs:
+	- names:
+		- 'tasks.node-exporter'
+		type: 'A'
+		port: 9100
+...
+
+m> tecla 'esc'
+
+m> :wq
+
+m> docker stack deploy -c ~/monitoring/monitoring.yml monitoring
+
+m> docker stack ps monitoring (obsevando nossa stack de monitoramento)
+
+http://master.docker-dca.example:9090  (endereço do nosso prometehus)
+
+
+http://master.docker-dca.example:8080   (endereço do nosso CAdvisor)
+
