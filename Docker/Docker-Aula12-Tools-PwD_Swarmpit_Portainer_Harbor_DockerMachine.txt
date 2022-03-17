@@ -1,0 +1,100 @@
+**************************************************************************************************************
+		DOCKER - AULA 12 - Tools (PwD + Swarmpit, Portainer, Harbor e Docker Machine)
+**************************************************************************************************************
+
+
+
+# Usando o playwithDocker:
+(https://labs.play-with-docker.com/)
+
++ Add New Instance
+
+
+//Criando um container
+> docker container run -dit --name nginx -p 80:80 nginx
+
++ Delete
+
+
++ (clicar no ícone de Ferramenta - Chave de boca) - Templates
++ 3 Managers and 2 Workers
+
+> docker node ls (observando nossos workers and managers)
+
+> docker node promote worker1 (promovendo o worker1 - podemos observar visualmente no site)
+
+> docker node demote worker1 (demovendo o worker1)
+
+
+
+# Swarmpit -> Aplicação utilizada para operar a infraestrutura com o Docker Swarm
+(https://swarmpit.io/)
+
+//Instalando o Swarmpit
+
+> curl -O https://raw.githubusercontent.com/swarmpit/swarmpit/master/docker-compose.yml
+
+> ls- l (verificando)
+
+> docker stack deploy -c docker-compose.yml swarmpit
+
+> docker stack ps swarmpit (observamos a stack sendo criada)
+
+> docker service ls (vendo as replicas -> subindo swarmpit)
+
+> CTRL+C (quebrar o comando)
+
++ Acessar a porta 888
+
++ Ctrl+R (atualiza as métricas)
+
+//Executando um registry
+manager> docker container run -dit --name registry -p 5000:5000 registry:2 
+
+
+//Copiar endereço IP do playWdocker
++ Registries
++ Link registry
++ Name = Registry
++ URL = http://192.168 (COLAR o IP)
+
++ Next
+
+//Criando um Stack
++ Stacks 
++ New Stack
+
+
+---
+
+# Tasks -> Podemos ver todas as tasks criadas
+
+---
+
+# Networks -> Temos as redes (hosts, bridge...)
+Conseguimos clicar em uma rede, e trabalhar nela, ver os containers que estão sendo trabalhados
+
+---
+
+# Nodes -> Podemos ver os nodes que estão sendo utilizados (status), bem como o uso de CPU, disco e ram.
+
+---
+
+# Volumes -> Podemos criar um volume direto da interface
+
+---
+
+# Secrets -> Podemos crias as secrets para fazer o mapeamento, direto da interface gráfica
+
+---
+
+# Congis -> Podemos configurar arquivos não confidenciais, como variáveis de ambiente.
+
+---
+
+# Portainer.io -> Ferramenta de container como serviço -> Serve para ter uma maneira de gerenciar sua stack, com dashboard, etc...
+
+---
+
+# Harbor -> Tem um conceito mais cloud native, as bibliotecas são separas por projeto
+
