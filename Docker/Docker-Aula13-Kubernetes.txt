@@ -1,0 +1,191 @@
+*****************************************************************
+		DOCKER - AULA 13 - Kubernetes
+*****************************************************************
+
+# Kubernetes 
+	(kube)
+	(k8s -> K + 8letras + s)
+
+Alternativas ao Kubernetes:
+	(k3s -> metade do k8s em complexidade (5letras)
+	(k0s -> Ultraleve, zero:atrito, sobrecarga e custo)
+
+
+-> Sistema Open Source
+-> Feito para a automação de Deployments (para podermos escalonar e gerenciar aplicativos em containers)
+
+O Kubernetes é básicamente uma cada de abstração que fica acima do Docker, ele substitui o Swarm com muitas mais funções.
+
+No Kubernetes, a Unidade Mínima Computacional não é o container, é o "Pod"
+O Kubernetes não faz deploy de containers, ele faz deploy de "Pod's"
+
+obs: A Unidade Mínima Computacional do Docker, são os containers
+
+O Kubernetes faz Deploy de Pods, que podem ter 1 ou + containers
+
+PODs recebem endereços de IPs únicos
+
+
+
+---
+Vamos utilizar o:
+
+Minikube -> Mini Kubernetes
+(https://minikube.sigs.k8s.io/docs/start/)
+
+Precisa de menos recursos (2vCPUS, 2gb Memória Libre, 20GB Disco, Internet, Container ou VM [Docker, HyperB, VirtualBox])
+
+--
+Escolhemos nosso Sistema operacional, copiamos os 2 comandos, e executamos no terminal
+
+
+//Baixando o Minikube através do terminal
+> minikube start --driver=docker
+
+
+//Processos do Kubernetes
+KinD -> Kubernetes in Docker (ele sobe um container docker com Kubernetes dentro dele)
+DinD -> Docker in Docker (usado no play with docker)
+KinK ->Kubernetes in Kubernetes
+
+
+> docker container ls
+
+> kubectl get nodes (trazendo as informações dos nodes do kube)
+
+> kubectl get all (vai trazer tudo do kube)
+
+> vim pod.yml
+
+apiVersion:1
+kind: Pod
+metadata:
+	name: demo
+spec:
+	containers:
+		- name: testpod
+		image: alpine:3.5
+		command: "ping", "8.8.8.8"
+
+> :wq
+
+> kubectl apply -f pod.yml (subindo nosso estado desejado)
+
+> kubectl get pods (vendo o pod criado)
+
+> kubectl get all (mostrando tudo [o Pod e os serviços])
+
+> kubectl logs demo (pegando o log do Pod)
+
+> kubectl delete -f pod.yml (deletando o Pod)
+
+/> kubectl delete pod demo (outra forma de deletar o Pod)
+
+> vim multi-container.yml
+
+apiVersion: V1
+kind: Pod
+metadata:
+	name: multi-container
+spec: 
+	restartPolicy: Never
+	volumes:
+		- name: shared-data
+		emptyDir: {}
+	containers:
+		-name: nginx-container
+		image: nginx
+		volumeMounts:
+			-name: shared-data
+			mounthPath: /usr/share/nginx/html
+		-name: debian-container
+		image: debian
+		volumeMounts:
+			- name: shared-data
+			mountPath: /pod-data
+		command: ["/bin/sh"]
+		args: ["-c", "echo Hello from the debian container > /pod-data/index.html"]
+
+> :wq
+
+> kubetcl apply -f multi-container.yml (rodando nosso pod)
+
+> kubectl get pods (verificando)
+
+> kubectl describe pod multi-container (exibindo informações mais detalhadas do container)
+
+> kubectl get pod multi-container (lista o pod)
+
+> kubectl get pod multi-container --output=yaml (roda tipo um describe em formato yml, com todos os dados do nosso Pod)
+
+> kubectl logs multi-container -c nginx-container (logs do nosso container nginx)
+
+> kubectl exec -it multi-container -c nginx=container - /bin/bash (executando)
+
+> curl localhost
+
+> kubectl delete -f multi-container.yml
+
+--
+
+> vim nginx-pod.yml
+
+apiVersion: V1
+kind: Pod
+metadata:
+	name: nginx
+	labels:
+		app: hello-world
+spec:
+	containers:
+		- name: nginx
+		image: nginx
+		ports:
+			- containerPort: 80
+
+> :wq
+
+kubectl apply -f ngin-pod.yml (rodando)
+
+kubectl get pods (status do pod)
+
+kubectl get all (vemos que não tem nenhum serviço atrelado a ele)
+
+
+//Criando um serviço
+vim nginx-svc.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+	name: nginx-dca
+spec;
+	ports:
+		- port: 80
+		protocol: TCP
+
+> :wq
+
+> kubectl applu -f nginx-pod.yml
+
+> kubectl get pods
+
+> kubectç get all
+
+> kubectl delete -f nginx-svc.yml
+
+
+// Rodando nosso serviço
+/> kubectl run --fm -it alpine --image=alpine --restar=Never == ash
+
+
+> apk update
+
+> curl nginx-dca:8080
+
+> exit
+
+minikube ip
+
+curl <IP>
+
