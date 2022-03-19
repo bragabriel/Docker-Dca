@@ -1,0 +1,163 @@
+*****************************************************************
+		DOCKER - AULA 14 - Enterprise
+*****************************************************************
+
+# Docker Enterprise -> Voltado ao mercado corporativo de soluções com assinatura que fornece: serviço de suporte, imagens certificadas, monitoramento...
+
+
+## Mirantis -> Empresa detentora do Enterprise
+
+
+O Mirantis contem:
+
+Universal Contro Plane (UCP) -> Interace de Gerenciamento
+
+Calico -> Ferramenta Open Source de segunrança e rede
+
+Istio -> Ingress Gateway (Gateway de entrada)
+
+Mirantis Secure Registry -> Registry seguro
+
+MKE -> Substituiu o antigo UCP do Docker (Enterprise)
+---
+
+Requisitos mínimos:
+
+8GB RAM -> Manager
+4GB ram -> Nodes (worker)
+2vCPUS -> Manager
+25 GB -> Disco
+
+---
+
+Requisitos de produção (na verdade são os requisitos necessários, pois se não sua tela fica com alertas):
+
+16GB RAM -> Manager
+4vCPUS -> Manager
+25 a 100GB Disco Livre (SSD)
+
+---
+
+ UCP (MKE) Unified Control Plane (Mirantis Kubernetes Engine)
+ DTR (MTR) Docker Trusted Registry (Mirantis Trusted Registry)
+ 
+ DCT - Docker Content Trust <- Confiança de conteúdo ao Docker
+
+ RBAC -> Role Based Access Control (Controle de Acesso baeado em Papeis) -> Configurando os acessos/papeis. Ex: só leitura, administrador, só escrita...
+
+---
+
+> vagrant ssh master
+
+//Execuntando um container
+m> docker container run --rm -it --name ucp -v /var/run/docker.sock:/var/run/docker.sock mirantis/ucp:3.4.6 --version
+(dando poder para o container controlar o docker)
+
+
+//Baixando todas as imagems necessárias para rodar o MKE
+m> docker container run --rm -it --name ucp -v /var/run/docker.sock:/var/run/docker.sock mirantis/ucp:3.4.6  images --pull missing
+
+
+m> ip -c br a
+
+m> docker container run --rm -it --name ucp -v /var/run/docker.sock:/var/run/docker.sock mirantis/ucp:3.4.6 install --host-address <IP - IP QUE PEGOU NO COMANDO ACIMA - enp0s8> --interactive
+
+m> username: admin
+m> senha: 
+m> <enter>
+
+m> docker container ls
+
+//A máquina entrará no cluster:
+m> docker swarm join --token <$TOKEN do Mirants> 
+
+r> docker swarm join --token <$TOKEN do Mirants> 
+
+1> docker swarm join --token <$TOKEN do Mirants> 
+
+
+r> <COMANDO "admin settings"-> "Mirantis Secure" -> "Registry" -> Copy the command>
+
+
+//Adicionando o Insecury registry ao arquivo Etc docker daemon, e reiniciando o Docker (O docker agora confia no registry como seguro)
+m> echo ´{ "insecure-registries" : ["registry.docker-dca.example"] }' | sudo tee /etc/docker/daemon.json ; sudo systemctl restart docker
+
+
+m> docker system info
+
+//Baixano o nginx
+m> docker image pull nginx 
+
+
+//Tagando a imagem do nginx
+m> docker image tag nginx registry.docker-dca.example/docker-dca/nginx
+
+m> docker image ls | grep nginx
+
+
+//Logando no registry
+m> docker login registry.docker-dca.example -u analista -p <SENHA>
+
+
+//Enviando a imagem
+m> docker push registry.docker-dca.example/docker-dca/nginx
+
+
+//Ativando o Docker Content Trust
+//Exportanto a variável ambiente
+m> export DOCKER_CONTENT_TRUST = 1 (todos os comandos que executarmos agora, ele será feito com imagems assinadas)
+
+
+//Logando no DockerHub no prompt
+> docker login -u <username>
+
+> docker trust key generate dca-youtube (gerando a  chave)
+
+> docker trust key load <nome da chave>
+
+> ls
+
+> docker trust key load dca-youtube.pub --name dca-youtube
+
+//Assinando a chave
+> docker trust signer add --key dca-youtube.pub caiodelgadonew caiodelgadonew/ginx
+//				chave		user		repositorio
+
+> cat dca-youtube.pub
+
+> DOCKER_CONTENT_TRUST=1 docker image pull caiodelgadonew/nginx  (baixando a imagem com o Docker Content Trust ativo)
+
+> docker trust inspect --pretty caiodelgadonew/nginx
+
+
+// Adicionando o RBAC (controle de papeis)
+<Através do site>
+
+
+//Prompt do pc -> Configurando o Cluster e o Usuário
+> source env.sh
+
+> docker version
+
+> ip -c -br a 
+
+> docker node ls
+
+> kubectl get nodes
+
+> kubectl get pods --all-namespaces
+
+
+---
+
+
+Protocólos de Autenticação e Autorização
+
+# LDAP -> Lightweight Directory Access Protocol
+# SAML -> Security Assertion Markup Language
+# SCIM -> System for Cross-domain Identity Management
+
+
+## AAA : Authorization, Authentication and Accounting
+
+
